@@ -77,6 +77,15 @@ public class OrdenDeCompraSocket extends Thread {
 
                         break;
 
+                    case ANTERIOR://Mensaje de error si pagina es 0
+                        pagina--;
+
+                        productos = dao.obtenerDisponibles(pagina);
+                        json = gson.toJson(productos);
+                        out.println(json);
+
+                        break;
+
                     case COMPRAR:
                         System.out.println("Compra realizada con exito, cerrando conexion...");
                         //ack
