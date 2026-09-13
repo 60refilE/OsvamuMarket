@@ -1,5 +1,7 @@
 package py.edu.fpuna.sockets;
 import com.google.gson.Gson;
+import py.edu.fpuna.dao.ProductoDAO;
+import py.edu.fpuna.entities.Producto;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,25 +9,33 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.ServerSocket;
+import java.util.List;
 
 public class OrdenDeCompraSocket extends Thread {
 
-    private static final int PORT = 8080;
+    private static final int PORT = 6767;
 
     private Socket socket;
+
+    private final ProductoDAO dao = new ProductoDAO();
 
     public OrdenDeCompraSocket(Socket socket) {
         this.socket = socket;
     }
 
     public void run() {
+        int pagina = 0;
         Gson gson = new Gson();
 
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
-            // enviar primeros productos
+
+            List<Producto> productos = dao.obtenerDisponibles(0);
+            String json = gson.toJson(productos);
+            out.println(json);
+
 
             boolean conectado = true;
             while (conectado) {

@@ -4,5 +4,5 @@ public enum Opciones {
     CANCELAR,
     CLIENTE,
     AGREGAR,
-    COMPRAR;
+    COMPRAR
 }
