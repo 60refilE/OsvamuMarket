@@ -1,8 +1,10 @@
 package py.edu.fpuna.enums;
 
 public enum Opciones {
-    CANCELAR,
-    CLIENTE,
+    SIGUIENTE,
     AGREGAR,
-    COMPRAR
+    ELIMINAR,
+    BORRAR_TODO,
+    COMPRAR,
+    CANCELAR
 }
