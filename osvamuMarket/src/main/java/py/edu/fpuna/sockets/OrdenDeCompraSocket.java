@@ -2,8 +2,10 @@ package py.edu.fpuna.sockets;
 import com.google.gson.Gson;
 import py.edu.fpuna.dao.ProductoDAO;
 import py.edu.fpuna.dto.MensajeClienteOrdenDeCompra;
+import py.edu.fpuna.dto.MensajeServidor;
 import py.edu.fpuna.entities.Producto;
 import py.edu.fpuna.enums.Opciones;
+import py.edu.fpuna.enums.TipoDeMensaje;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,7 +37,7 @@ public class OrdenDeCompraSocket extends Thread {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
             List<Producto> productos = dao.obtenerDisponibles(0);
-            String json = gson.toJson(productos);
+            String json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,"Productos disponibles",productos));
             out.println(json);
 
             MensajeClienteOrdenDeCompra mensaje;
@@ -60,73 +62,120 @@ public class OrdenDeCompraSocket extends Thread {
                 switch (opcion) {
 
                     case AGREGAR:
-                        //Mandar error si se ingresa una id invalida(null eb dao.obtenerPodId
-                        carrito.add(dao.obtenerPorId(mensaje.getIdProducto()));
-                        //OK!
+                        Producto productoAgregar = dao.obtenerPorId(mensaje.getIdProducto());
+                        if (productoAgregar == null) {
+
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "El producto solicitado no existe.",
+                                    null));
+                            out.println(json);
+
+                            break;
+                        }
+                        carrito.add(productoAgregar);
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
+                                "Operacion exitosa!", null));
+                        out.println(json);
                         break;
 
                     case ELIMINAR:
-                        carrito.remove(dao.obtenerPorId(mensaje.getIdProducto()));
-                        //OK!
+                        Producto productoEliminar = dao.obtenerPorId(mensaje.getIdProducto());
+                        if (productoEliminar == null) {
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "El producto solicitado no existe.",
+                                    null));
+                            out.println(json);
+                            break;
+                        }
+                        carrito.remove(productoEliminar);
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
+                                "Operacion exitosa!", null));
+                        out.println(json);
                         break;
 
                     case BORRAR_TODO:
                         carrito.clear();
-                        //OK!
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
+                                "Carrito vaciado.", null));
+                        out.println(json);
                         break;
 
                     case SIGUIENTE:
-                        pagina++;//Tratar el caso en el que ya no quedan filas
-                        //NOTA
+                        pagina++;
                         productos = dao.obtenerDisponibles(pagina);
-                        json = gson.toJson(productos);
+                        if (productos.isEmpty()) {
+                            pagina--;
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "No hay más productos.",
+                                    null));
+                        } else {
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,
+                                    "Productos disponibles",
+                                    productos));
+                        }
                         out.println(json);
-
                         break;
 
                     case ANTERIOR:
-                        if( !(pagina>0) ){
-                            //ERROR/NOTA
-
+                        if (!(pagina > 0)) {
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "Ya está en la primera página.",
+                                    null));
+                            out.println(json);
                             break;
                         }
                         pagina--;
-
                         productos = dao.obtenerDisponibles(pagina);
-                        json = gson.toJson(productos);
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,
+                                "Productos disponibles",
+                                productos));
                         out.println(json);
-
                         break;
 
                     case COMPRAR:
                         System.out.println("Compra realizada con exito, cerrando conexion...");
-                        //OK!
+                        // INSERT en compras
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
+                                "Compra realizada con exito.",
+                                null));
+                        out.println(json);
                         conectado = false;
-
                         break;
 
                     case CANCELAR:
-                        //OK!
                         System.out.println("El cliente ha cancelado la compra, cerrando conexion...");
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
+                                "Conexion cerrada.",
+                                null));
+                        out.println(json);
                         conectado = false;
                         break;
 
-
                     case CARRITO:
-                        //NOTA
-                        json = gson.toJson(carrito);
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,
+                                "Su carrito actual:",
+                                carrito));
                         out.println(json);
                         break;
+
                     default:
-                        //ERROR
+                        json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                "Opcion no reconocida.",
+                                null));
+                        out.println(json);
                         break;
                 }
             }
 
-            socket.close();
 
         } catch (IOException e) {
             System.out.println("Error con el cliente: " + e.getMessage());
+        }finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                System.out.println("Error al cerrar el socket: " + e.getMessage());
+            }
         }
     }
 

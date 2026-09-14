@@ -4,5 +4,5 @@ public enum TipoDeMensaje {
     ERROR,
     OK,
     PRODUCTOS,
-    NOTA
+    INFORMACION
 }
