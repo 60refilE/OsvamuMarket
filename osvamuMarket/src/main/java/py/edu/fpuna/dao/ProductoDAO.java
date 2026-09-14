@@ -41,4 +41,34 @@ public class ProductoDAO {
 
         return lista;
     }
+
+    public Producto obtenerPorId(int id) {
+
+        String sql = "SELECT id, name, quantity, price FROM productos WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(URL, USUARIO, CONTRASENA);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                    if(rs.next()){
+                        Producto p = new Producto(
+                                rs.getInt("id"),
+                                rs.getString("name"),
+                                rs.getInt("price"),
+                                rs.getInt("quantity")
+                        );
+
+                        return p;
+                    }
+
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al obtener producto: " + e.getMessage());
+        }
+        return null;
+    }
 }

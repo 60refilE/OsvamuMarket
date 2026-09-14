@@ -60,24 +60,36 @@ public class OrdenDeCompraSocket extends Thread {
                 switch (opcion) {
 
                     case AGREGAR:
+                        //Mandar error si se ingresa una id invalida(null eb dao.obtenerPodId
+                        carrito.add(dao.obtenerPorId(mensaje.getIdProducto()));
+                        //OK!
                         break;
 
                     case ELIMINAR:
+                        carrito.remove(dao.obtenerPorId(mensaje.getIdProducto()));
+                        //OK!
                         break;
 
                     case BORRAR_TODO:
+                        carrito.clear();
+                        //OK!
                         break;
 
                     case SIGUIENTE:
-                        pagina++;
-
+                        pagina++;//Tratar el caso en el que ya no quedan filas
+                        //NOTA
                         productos = dao.obtenerDisponibles(pagina);
                         json = gson.toJson(productos);
                         out.println(json);
 
                         break;
 
-                    case ANTERIOR://Mensaje de error si pagina es 0
+                    case ANTERIOR:
+                        if( !(pagina>0) ){
+                            //ERROR/NOTA
+
+                            break;
+                        }
                         pagina--;
 
                         productos = dao.obtenerDisponibles(pagina);
@@ -88,19 +100,25 @@ public class OrdenDeCompraSocket extends Thread {
 
                     case COMPRAR:
                         System.out.println("Compra realizada con exito, cerrando conexion...");
-                        //ack
+                        //OK!
                         conectado = false;
 
                         break;
 
                     case CANCELAR:
+                        //OK!
                         System.out.println("El cliente ha cancelado la compra, cerrando conexion...");
                         conectado = false;
                         break;
 
+
+                    case CARRITO:
+                        //NOTA
+                        json = gson.toJson(carrito);
+                        out.println(json);
+                        break;
                     default:
-                        //Error, opcion desconocida, enviar un json para mensajes custom
-                        // (ej:errores, informacion o advertencias?)
+                        //ERROR
                         break;
                 }
             }

@@ -7,5 +7,6 @@ public enum Opciones {
     ELIMINAR,
     BORRAR_TODO,
     COMPRAR,
-    CANCELAR
+    CANCELAR,
+    CARRITO
 }
