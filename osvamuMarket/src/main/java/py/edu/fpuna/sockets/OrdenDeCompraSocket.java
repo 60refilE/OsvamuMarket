@@ -1,5 +1,6 @@
 package py.edu.fpuna.sockets;
 import com.google.gson.Gson;
+import py.edu.fpuna.dao.CompraDAO;
 import py.edu.fpuna.dao.ProductoDAO;
 import py.edu.fpuna.dto.MensajeClienteOrdenDeCompra;
 import py.edu.fpuna.dto.MensajeServidor;
@@ -14,15 +15,18 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class OrdenDeCompraSocket extends Thread {
 
-    private static final int PORT = 6767;
+    private static final int PORT = 8000;
 
     private Socket socket;
 
     private final ProductoDAO dao = new ProductoDAO();
+    private final CompraDAO compraDAO = new CompraDAO();
 
     public OrdenDeCompraSocket(Socket socket) {
         this.socket = socket;
@@ -37,13 +41,14 @@ public class OrdenDeCompraSocket extends Thread {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
             List<Producto> productos = dao.obtenerDisponibles(0);
-            String json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,"Productos disponibles",productos));
+            String json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,
+                    "Productos disponibles",productos));
             out.println(json);
 
             MensajeClienteOrdenDeCompra mensaje;
 
 
-            List<Producto> carrito=new ArrayList<Producto>();
+            Map<Integer, Integer> carrito = new HashMap<>(); // idProducto -> cantidad
 
             boolean conectado = true;
             while (conectado) {
@@ -72,22 +77,22 @@ public class OrdenDeCompraSocket extends Thread {
 
                             break;
                         }
-                        carrito.add(productoAgregar);
+                        int cantAgregar = mensaje.getCantidad() > 0 ? mensaje.getCantidad() : 1;
+                        carrito.merge(productoAgregar.getId(), cantAgregar, Integer::sum);
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
                                 "Operacion exitosa!", null));
                         out.println(json);
                         break;
 
                     case ELIMINAR:
-                        Producto productoEliminar = dao.obtenerPorId(mensaje.getIdProducto());
-                        if (productoEliminar == null) {
+                        if (!carrito.containsKey(mensaje.getIdProducto())) {
                             json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
-                                    "El producto solicitado no existe.",
+                                    "El producto no está en el carrito.",
                                     null));
                             out.println(json);
                             break;
                         }
-                        carrito.remove(productoEliminar);
+                        carrito.remove(mensaje.getIdProducto());
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
                                 "Operacion exitosa!", null));
                         out.println(json);
@@ -133,10 +138,43 @@ public class OrdenDeCompraSocket extends Thread {
                         break;
 
                     case COMPRAR:
-                        System.out.println("Compra realizada con exito, cerrando conexion...");
-                        // INSERT en compras
+                        if (carrito.isEmpty()) {
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "El carrito está vacío.",
+                                    null));
+                            out.println(json);
+                            break;
+                        }
+                        // Calcular el monto total con precios vigentes
+                        int total = 0;
+                        boolean errorStock = false;
+                        for (Map.Entry<Integer, Integer> item : carrito.entrySet()) {
+                            Producto p = dao.obtenerPorId(item.getKey());
+                            if (p == null || p.getQuantity() < item.getValue()) {
+                                errorStock = true;
+                                break;
+                            }
+                            total += p.getPrice() * item.getValue();
+                        }
+                        if (errorStock) {
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "Stock insuficiente o producto inexistente.",
+                                    null));
+                            out.println(json);
+                            break;
+                        }
+                        int idCompra = compraDAO.registrarCompra(carrito, total);
+                        if (idCompra <= 0) {
+                            json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
+                                    "No se pudo registrar la compra.",
+                                    null));
+                            out.println(json);
+                            break;
+                        }
+                        carrito.clear();
+                        System.out.println("Compra " + idCompra + " realizada con exito, cerrando conexion...");
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
-                                "Compra realizada con exito.",
+                                "Compra " + idCompra + " realizada con exito. Total: " + total,
                                 null));
                         out.println(json);
                         conectado = false;
@@ -152,9 +190,17 @@ public class OrdenDeCompraSocket extends Thread {
                         break;
 
                     case CARRITO:
+                        List<Producto> vistaCarrito = new ArrayList<>();
+                        for (Map.Entry<Integer, Integer> item : carrito.entrySet()) {
+                            Producto p = dao.obtenerPorId(item.getKey());
+                            if (p != null) {
+                                p.setQuantity(item.getValue()); // cantidad comprada
+                                vistaCarrito.add(p);
+                            }
+                        }
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.PRODUCTOS,
                                 "Su carrito actual:",
-                                carrito));
+                                vistaCarrito));
                         out.println(json);
                         break;
 
