@@ -1,5 +1,17 @@
 package py.edu.fpuna.sockets;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.google.gson.Gson;
+
 import py.edu.fpuna.dao.CompraDAO;
 import py.edu.fpuna.dao.ProductoDAO;
 import py.edu.fpuna.dto.MensajeClienteOrdenDeCompra;
@@ -7,17 +19,6 @@ import py.edu.fpuna.dto.MensajeServidor;
 import py.edu.fpuna.entities.Producto;
 import py.edu.fpuna.enums.Opciones;
 import py.edu.fpuna.enums.TipoDeMensaje;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class OrdenDeCompraSocket extends Thread {
 
@@ -145,7 +146,7 @@ public class OrdenDeCompraSocket extends Thread {
                             out.println(json);
                             break;
                         }
-                        // Calcular el monto total con precios vigentes
+
                         int total = 0;
                         boolean errorStock = false;
                         for (Map.Entry<Integer, Integer> item : carrito.entrySet()) {
@@ -163,6 +164,7 @@ public class OrdenDeCompraSocket extends Thread {
                             out.println(json);
                             break;
                         }
+
                         int idCompra = compraDAO.registrarCompra(carrito, total);
                         if (idCompra <= 0) {
                             json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
@@ -171,8 +173,26 @@ public class OrdenDeCompraSocket extends Thread {
                             out.println(json);
                             break;
                         }
+
                         carrito.clear();
                         System.out.println("Compra " + idCompra + " realizada con exito, cerrando conexion...");
+
+                        // =========================================================================
+                        // NUEVO CÓDIGO (FLUJO 3): ENVIAR FACTURA A SUPER ELIAN (PUERTO 8001)
+                        // =========================================================================
+                        try (Socket socketFactura = new Socket("localhost", 8001);
+                             PrintWriter outFactura = new PrintWriter(socketFactura.getOutputStream(), true)) {
+
+                            py.edu.fpuna.entities.Factura factura = new py.edu.fpuna.entities.Factura(0, idCompra, total, "2026-10-02");
+                            py.edu.fpuna.dto.MensajeFactura msjFactura = new py.edu.fpuna.dto.MensajeFactura(factura, "Factura OsvamuMarket");
+
+                            outFactura.println(gson.toJson(msjFactura));
+                            System.out.println("--> Factura de compra " + idCompra + " enviada al sistema de Super Elian.");
+                        } catch (Exception e) {
+                            System.err.println("No se pudo conectar a Super Elian para enviar factura: " + e.getMessage());
+                        }
+                        // =========================================================================
+
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
                                 "Compra " + idCompra + " realizada con exito. Total: " + total,
                                 null));
