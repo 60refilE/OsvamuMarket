@@ -205,7 +205,7 @@ public class OrdenDeCompraSocket extends Thread {
                         for (Map.Entry<Integer, Integer> item : carrito.entrySet()) {
                             Producto p = dao.obtenerPorId(item.getKey());
                             if (p != null) {
-                                p.setQuantity(item.getValue()); // cantidad comprada
+                                p.setCantidadCarrito(item.getValue()); // cantidad comprada
                                 vistaCarrito.add(p);
                             }
                         }
