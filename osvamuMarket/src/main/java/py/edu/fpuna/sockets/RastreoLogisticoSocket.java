@@ -20,7 +20,7 @@ public class RastreoLogisticoSocket {
         try (DatagramSocket socket = new DatagramSocket(PORT)) {
             Gson gson = new Gson();
             byte[] buffer = new byte[1024];
-            System.out.println("Servidor UDP de Rastreo Logistico esperando en puerto " + PORT + "...");
+            System.out.println("[OsvamuMarket] Servidor UDP de Rastreo Logístico en puerto " + PORT + ". En espera...");
 
             while (true) {
                 DatagramPacket paqueteEntrada = new DatagramPacket(buffer, buffer.length);
@@ -32,7 +32,7 @@ public class RastreoLogisticoSocket {
                 MensajeServidor respuesta;
 
                 if (!dao.existeCompra(peticion.getCodigoConfirmacion())) {
-                    respuesta = new MensajeServidor(TipoDeMensaje.ERROR, "Codigo de confirmacion no valido. No existe la orden.", null);
+                    respuesta = new MensajeServidor(TipoDeMensaje.ERROR, "Código de confirmación no válido. No existe la orden.", null);
                 } else {
                     int codigo = peticion.getCodigoConfirmacion();
                     String etapa;
@@ -41,16 +41,16 @@ public class RastreoLogisticoSocket {
                     int resto = Math.abs(codigo % 3);
                     if (resto == 1) {
                         etapa = "PREPARACION";
-                        ubicacion = "Deposito OsvamuMarket - Asuncion";
-                        respuesta = new MensajeServidor(TipoDeMensaje.INFORMACION, "Etapa: " + etapa + " | Ubicacion: " + ubicacion + " | Actualizado: " + ahora(), null);
+                        ubicacion = "Depósito OsvamuMarket - Asunción";
+                        respuesta = new MensajeServidor(TipoDeMensaje.INFORMACION, "Etapa: " + etapa + " | Ubicación: " + ubicacion + " | Actualizado: " + ahora(), null);
                     } else if (resto == 2) {
                         etapa = "EN CAMINO";
-                        ubicacion = "Camion en ruta - Av. Eusebio Ayala";
-                        respuesta = new MensajeServidor(TipoDeMensaje.INFORMACION, "Etapa: " + etapa + " | Ubicacion: " + ubicacion + " | Actualizado: " + ahora(), null);
+                        ubicacion = "Camión en ruta - Av. Eusebio Ayala";
+                        respuesta = new MensajeServidor(TipoDeMensaje.INFORMACION, "Etapa: " + etapa + " | Ubicación: " + ubicacion + " | Actualizado: " + ahora(), null);
                     } else {
                         etapa = "ENTREGADO";
                         ubicacion = "Sucursal Super Elian - Recibido";
-                        respuesta = new MensajeServidor(TipoDeMensaje.OK, "Etapa: " + etapa + " | Ubicacion: " + ubicacion + " | Actualizado: " + ahora(), null);
+                        respuesta = new MensajeServidor(TipoDeMensaje.OK, "Etapa: " + etapa + " | Ubicación: " + ubicacion + " | Actualizado: " + ahora(), null);
                     }
                 }
 
@@ -60,7 +60,7 @@ public class RastreoLogisticoSocket {
                 socket.send(paqueteSalida);
             }
         } catch (Exception e) {
-            System.err.println("Error en Rastreo Logistico: " + e.getMessage());
+            System.err.println("[OsvamuMarket] ERROR en Rastreo Logístico: " + e.getMessage());
         }
     }
 

@@ -22,7 +22,7 @@ public class DisponibilidadDeStockSocket {
         Gson gson = new Gson();
         byte[] buffer = new byte[1024];
 
-        System.out.println("Servidor UDP de Stock esperando en el puerto " + PORT + "...");
+        System.out.println("[OsvamuMarket] Servidor UDP de Stock en puerto " + PORT + ". En espera...");
 
         while (true) {
             try {
@@ -41,7 +41,7 @@ public class DisponibilidadDeStockSocket {
                 MensajeServidor respuesta;
                 if (productos.isEmpty()) {
                     respuesta = new MensajeServidor(TipoDeMensaje.ERROR,
-                            "No hay más productos en la pagina indicada.",
+                            "No hay más productos en la página indicada.",
                             null);
                 } else {
                     respuesta = new MensajeServidor(TipoDeMensaje.PRODUCTOS,
@@ -55,7 +55,7 @@ public class DisponibilidadDeStockSocket {
                         datosSalida, datosSalida.length, direccionCliente, puertoCliente);
                 socket.send(paqueteSalida);
             } catch (Exception e) {
-                System.out.println("Error atendiendo petición de stock: " + e.getMessage());
+                System.out.println("[OsvamuMarket] ERROR atendiendo petición de stock: " + e.getMessage());
             }
         }
     }

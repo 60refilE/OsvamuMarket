@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,7 +82,7 @@ public class OrdenDeCompraSocket extends Thread {
                         int cantAgregar = mensaje.getCantidad() > 0 ? mensaje.getCantidad() : 1;
                         carrito.merge(productoAgregar.getId(), cantAgregar, Integer::sum);
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
-                                "Operacion exitosa!", null));
+                                "Operación exitosa.", null));
                         out.println(json);
                         break;
 
@@ -95,7 +96,7 @@ public class OrdenDeCompraSocket extends Thread {
                         }
                         carrito.remove(mensaje.getIdProducto());
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
-                                "Operacion exitosa!", null));
+                                "Operación exitosa.", null));
                         out.println(json);
                         break;
 
@@ -175,35 +176,25 @@ public class OrdenDeCompraSocket extends Thread {
                         }
 
                         carrito.clear();
-                        System.out.println("Compra " + idCompra + " realizada con exito, cerrando conexion...");
+                        System.out.println("[OsvamuMarket] Compra " + idCompra + " registrada. Cerrando conexión...");
 
-                        // =========================================================================
-                        // NUEVO CÓDIGO (FLUJO 3): ENVIAR FACTURA A SUPER ELIAN (PUERTO 8001)
-                        // =========================================================================
-                        try (Socket socketFactura = new Socket("localhost", 8001);
-                             PrintWriter outFactura = new PrintWriter(socketFactura.getOutputStream(), true)) {
+                        boolean facturaOk = enviarFactura(idCompra, total, gson);
 
-                            py.edu.fpuna.entities.Factura factura = new py.edu.fpuna.entities.Factura(0, idCompra, total, "2026-10-02");
-                            py.edu.fpuna.dto.MensajeFactura msjFactura = new py.edu.fpuna.dto.MensajeFactura(factura, "Factura OsvamuMarket");
-
-                            outFactura.println(gson.toJson(msjFactura));
-                            System.out.println("--> Factura de compra " + idCompra + " enviada al sistema de Super Elian.");
-                        } catch (Exception e) {
-                            System.err.println("No se pudo conectar a Super Elian para enviar factura: " + e.getMessage());
+                        String mensajeCompra = "Compra " + idCompra + " realizada con éxito. Total: " + String.format("%,d", total).replace(",", ".") + " Gs.";
+                        if (!facturaOk) {
+                            mensajeCompra += " ADVERTENCIA: no se pudo registrar la factura en Super Elian.";
                         }
-                        // =========================================================================
-
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
-                                "Compra " + idCompra + " realizada con exito. Total: " + total,
+                                mensajeCompra,
                                 null));
                         out.println(json);
                         conectado = false;
                         break;
 
                     case CANCELAR:
-                        System.out.println("El cliente ha cancelado la compra, cerrando conexion...");
+                        System.out.println("[OsvamuMarket] El cliente canceló la compra. Cerrando conexión...");
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.OK,
-                                "Conexion cerrada.",
+                                "Conexión cerrada.",
                                 null));
                         out.println(json);
                         conectado = false;
@@ -226,7 +217,7 @@ public class OrdenDeCompraSocket extends Thread {
 
                     default:
                         json = gson.toJson(new MensajeServidor(TipoDeMensaje.ERROR,
-                                "Opcion no reconocida.",
+                                "Opción no reconocida.",
                                 null));
                         out.println(json);
                         break;
@@ -235,24 +226,52 @@ public class OrdenDeCompraSocket extends Thread {
 
 
         } catch (IOException e) {
-            System.out.println("Error con el cliente: " + e.getMessage());
+            System.out.println("[OsvamuMarket] ERROR con el cliente: " + e.getMessage());
         }finally {
             try {
                 socket.close();
             } catch (IOException e) {
-                System.out.println("Error al cerrar el socket: " + e.getMessage());
+                System.out.println("[OsvamuMarket] ERROR al cerrar el socket: " + e.getMessage());
             }
+        }
+    }
+
+    private boolean enviarFactura(int idCompra, int total, Gson gson) {
+        try (Socket socketFactura = new Socket("localhost", 8001);
+             PrintWriter outFactura = new PrintWriter(socketFactura.getOutputStream(), true);
+             BufferedReader inFactura = new BufferedReader(new InputStreamReader(socketFactura.getInputStream()))) {
+
+            py.edu.fpuna.entities.Factura factura = new py.edu.fpuna.entities.Factura(0, idCompra, total, LocalDate.now().toString());
+            py.edu.fpuna.dto.MensajeFactura msjFactura = new py.edu.fpuna.dto.MensajeFactura(factura, "Factura OsvamuMarket");
+
+            outFactura.println(gson.toJson(msjFactura));
+
+            String jsonResp = inFactura.readLine();
+            if (jsonResp == null) {
+                System.err.println("[OsvamuMarket] ERROR: Super Elian cerró la conexión sin confirmar la factura " + idCompra + ".");
+                return false;
+            }
+            MensajeServidor confirmacion = gson.fromJson(jsonResp, MensajeServidor.class);
+            if (confirmacion.getTipo() == TipoDeMensaje.OK) {
+                System.out.println("[OsvamuMarket] Factura de compra " + idCompra + " confirmada por Super Elian.");
+                return true;
+            }
+            System.err.println("[OsvamuMarket] ERROR: Super Elian rechazó la factura " + idCompra + ": " + confirmacion.getMensaje());
+            return false;
+        } catch (Exception e) {
+            System.err.println("[OsvamuMarket] ERROR: no se pudo enviar la factura a Super Elian: " + e.getMessage());
+            return false;
         }
     }
 
     public static void main(String[] args) throws IOException {
 
         ServerSocket serverSocket = new ServerSocket(PORT);
-        System.out.println("Servidor iniciado, esperando conexiones...");
+        System.out.println("[OsvamuMarket] Servidor TCP de Orden de Compra en puerto " + PORT + ". En espera...");
 
         while(true){
             Socket socketCliente = serverSocket.accept();
-            System.out.println("Conexion aceptada por el cliente.");
+            System.out.println("[OsvamuMarket] Cliente conectado.");
 
             new OrdenDeCompraSocket(socketCliente).start();
 

@@ -28,7 +28,7 @@ public class RastreoDAO {
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al verificar compra: " + e.getMessage());
+            System.out.println("[OsvamuMarket] ERROR al verificar compra: " + e.getMessage());
         }
         return false;
     }

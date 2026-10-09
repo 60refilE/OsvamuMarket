@@ -19,7 +19,7 @@ public class VerificacionStockSocket {
         try (DatagramSocket socket = new DatagramSocket(PORT)) {
             Gson gson = new Gson();
             byte[] buffer = new byte[1024];
-            System.out.println("Servidor UDP de Verificación de Stock esperando en puerto " + PORT + "...");
+            System.out.println("[OsvamuMarket] Servidor UDP de Verificación de Stock en puerto " + PORT + ". En espera...");
 
             while (true) {
                 DatagramPacket paqueteEntrada = new DatagramPacket(buffer, buffer.length);
@@ -28,13 +28,12 @@ public class VerificacionStockSocket {
                 String jsonIn = new String(paqueteEntrada.getData(), 0, paqueteEntrada.getLength());
                 MensajeVerificarStock peticion = gson.fromJson(jsonIn, MensajeVerificarStock.class);
                 
-                // Buscar el producto en la BD de OsvamuMarket
                 Producto p = dao.obtenerPorId(peticion.getIdProducto());
                 MensajeServidor respuesta;
                 
                 if (p != null) {
                     if (p.getQuantity() > 0) {
-                        respuesta = new MensajeServidor(TipoDeMensaje.OK, "Hay stock disponible. Cantidad en depósito: " + p.getQuantity(), null);
+                        respuesta = new MensajeServidor(TipoDeMensaje.OK, "Hay stock disponible (" + p.getQuantity() + " unidades en depósito).", null);
                     } else {
                         respuesta = new MensajeServidor(TipoDeMensaje.INFORMACION, "Producto agotado. No hay stock.", null);
                     }
@@ -42,14 +41,13 @@ public class VerificacionStockSocket {
                     respuesta = new MensajeServidor(TipoDeMensaje.ERROR, "El producto solicitado no existe.", null);
                 }
 
-                // Enviar respuesta a Super Elian
                 byte[] datosSalida = gson.toJson(respuesta).getBytes();
                 DatagramPacket paqueteSalida = new DatagramPacket(
                         datosSalida, datosSalida.length, paqueteEntrada.getAddress(), paqueteEntrada.getPort());
                 socket.send(paqueteSalida);
             }
         } catch (Exception e) {
-            System.err.println("Error en Verificación de Stock: " + e.getMessage());
+            System.err.println("[OsvamuMarket] ERROR en Verificación de Stock: " + e.getMessage());
         }
     }
 }

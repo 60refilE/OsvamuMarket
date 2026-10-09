@@ -36,7 +36,7 @@ public class ProductoDAO {
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al obtener productos: " + e.getMessage());
+            System.out.println("[OsvamuMarket] ERROR al obtener productos: " + e.getMessage());
         }
 
         return lista;
@@ -67,7 +67,7 @@ public class ProductoDAO {
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al obtener producto: " + e.getMessage());
+            System.out.println("[OsvamuMarket] ERROR al obtener producto: " + e.getMessage());
         }
         return null;
     }

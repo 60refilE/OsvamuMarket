@@ -42,7 +42,6 @@ public class CompraDAO {
                     }
                 }
 
-                // Recorre el carrito e inserta cada línea en detalle_compra
                 for (Map.Entry<Integer, Integer> e : carrito.entrySet()) {
                     int idProducto = e.getKey();
                     int cantidad = e.getValue();
@@ -89,14 +88,14 @@ public class CompraDAO {
 
             } catch (SQLException ex) {
                 conn.rollback();
-                System.out.println("Error al registrar compra: " + ex.getMessage());
+                System.out.println("[OsvamuMarket] ERROR al registrar compra: " + ex.getMessage());
                 return -1;
             } finally {
                 conn.setAutoCommit(true);
             }
 
         } catch (SQLException e) {
-            System.out.println("Error al registrar compra: " + e.getMessage());
+            System.out.println("[OsvamuMarket] ERROR al registrar compra: " + e.getMessage());
             return -1;
         }
     }

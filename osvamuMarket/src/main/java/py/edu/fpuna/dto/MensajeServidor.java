@@ -15,4 +15,16 @@ public class MensajeServidor {
         this.mensaje = mensaje;
         this.productos = productos;
     }
+
+    public TipoDeMensaje getTipo() {
+        return tipo;
+    }
+
+    public String getMensaje() {
+        return mensaje;
+    }
+
+    public List<Producto> getProductos() {
+        return productos;
+    }
 }
